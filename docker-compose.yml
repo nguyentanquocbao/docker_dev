@@ -1,0 +1,148 @@
+version: '3.8'
+services:
+  python_dev:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: py
+    volumes:
+      - D:/quant/:/mmt/local
+    ports:
+      - "25:32777"   # SSH access, assuming SSH is configured in the Dockerfile
+    stdin_open: true  # Allows interactive sessions with the container
+    tty: true  # Keeps the terminal open for development purposes
+    networks:
+      - my_network  # Connect to the same network
+    deploy:
+      resources:
+        limits:
+          cpus: '20.0'     
+          memory: 25G      
+  python_dev_2:
+    build:
+      context: .
+      dockerfile: dockerfile_dev
+    container_name: py_dev
+    volumes:
+      - D:/quant/:/mmt/local
+    ports:
+      - "34:32778"   # SSH access, assuming SSH is configured in the Dockerfile
+    stdin_open: true  # Allows interactive sessions with the container
+    tty: true  # Keeps the terminal open for development purposes
+    networks:
+      - my_network  # Connect to the same network
+    deploy:
+      resources:
+        limits:
+          cpus: '20.0'      # Maximum 8 CPUs
+          memory: 25G      # Maximum 16GB RAM
+
+  postgres:
+    image: postgres:16
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: baontq
+      POSTGRES_PASSWORD: 00dantruong
+      POSTGRES_DB: corp
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - my_network  # Connect to the same network
+    deploy:
+      resources:
+        limits:
+          cpus: '8.0'      # Maximum 8 CPUs
+          memory: 12G      # Maximum 16GB RAM
+
+  spark:
+    image: bitnami/spark:latest
+    container_name: spark
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark
+      - SPARK_MASTER_PORT=7077
+    ports:
+      - "8080:8080"  # Spark Web UI
+      - "7077:7077"  # Spark master port
+    networks:
+      - my_network  # Connect to the same network
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'      # Maximum 8 CPUs
+          memory: 4G      # Maximum 16GB RAM
+  spark_worker:
+    image: bitnami/spark:latest
+    container_name: spark_worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=20g
+      - SPARK_WORKER_CORES=20
+    networks:
+      - my_network  # Connect to the same network
+    deploy:
+      resources:
+        limits:
+          cpus: '20.0'      # Maximum 8 CPUs
+          memory: 20G      # Maximum 16GB RAM
+    depends_on:
+      - spark
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    ports:
+      - 9870:9870
+      - 9010:9000
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    networks:
+      - my_network  # Connect to the same network
+    env_file:
+      - ./hadoop.env
+
+  datanode:
+  # Maximum 16GB RAM
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+    ports:
+      - "9864:9864"
+    networks:
+      - my_network  # Connect to the same network
+    env_file:
+      - ./hadoop.env
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+    env_file:
+      - ./hadoop.env
+    networks:
+      - my_network  # Connect to the same network
+
+  nodemanager1:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+    networks:
+      - my_network  # Connect to the same network
+    env_file:
+      - ./hadoop.env
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
+networks:
+  my_network:
+    driver: bridge

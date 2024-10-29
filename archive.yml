@@ -1,0 +1,87 @@
+version: '3.8'
+services:
+  python_dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: python_dev_env
+    volumes:
+      - D:/quant/:/mmt/local
+    ports:
+      - "2222:22"   # SSH access, assuming SSH is configured in the Dockerfile
+    stdin_open: true  # Allows interactive sessions with the container
+    tty: true  # Keeps the terminal open for development purposes
+    networks:
+      - my_network  # Connect to the same network
+    deploy:
+      resources:
+        limits:
+          cpus: '16.0'      # Maximum 8 CPUs
+          memory: 16G      # Maximum 16GB RAM
+
+  postgres:
+    image: postgres:16
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: baontq
+      POSTGRES_PASSWORD: 00dantruong
+      POSTGRES_DB: corp
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - my_network  # Connect to the same network
+    deploy:
+      resources:
+        limits:
+          cpus: '8.0'      # Maximum 8 CPUs
+          memory: 16G      # Maximum 16GB RAM
+
+  spark:
+    image: bitnami/spark:latest
+    container_name: spark
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark
+      - SPARK_MASTER_PORT=7077
+    ports:
+      - "8080:8080"  # Spark Web UI
+      - "7077:7077"  # Spark master port
+    networks:
+      - my_network  # Connect to the same network
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'      # Maximum 8 CPUs
+          memory: 4G      # Maximum 16GB RAM
+  spark_worker:
+    image: bitnami/spark:latest
+    container_name: spark_worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=16g
+      - SPARK_WORKER_CORES=12
+    networks:
+      - my_network  # Connect to the same network
+    depends_on:
+      - spark
+  hadoop:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop
+    environment:
+      - CLUSTER_NAME=test
+    ports:
+      - "9870:9870"  # Hadoop Web UI
+      - "9000:9000"  # HDFS
+    networks:
+      - my_network  # Connect to the same network
+    deploy:
+      resources:
+        limits:
+          cpus: '12.0'      # Maximum 4 CPUs
+          memory: 8G  
+networks:
+  my_network:
+    driver: bridge
