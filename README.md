@@ -19,3 +19,22 @@ This project simplifies the setup of a data engineering environment using Docker
 - **Spark Cluster**: Spark master and worker nodes.
 - **Hadoop Servers**: Resource Manager, NameNode, and DataNode.
 - **PostgreSQL Database**: A fully functional PostgreSQL instance
+# Setting Up the Docker Development Environment
+
+This guide will walk you through cloning the `docker_dev` repository and running Docker Compose with your YAML configuration file.
+
+## Prerequisites
+
+- Make sure Docker and Docker Compose are installed on your system. You can follow the official Docker installation guide [here](https://docs.docker.com/get-docker/).
+- Check that both `git` and Docker Compose are working by running:
+  ```bash
+  git --version
+  docker --version
+  docker compose version
+clone my git 
+```Shell
+git clone https://github.com/nguyentanquocbao/docker_dev.git
+cd docker_dev
+docker compose up -d
+```
+Enjoy coding! 
